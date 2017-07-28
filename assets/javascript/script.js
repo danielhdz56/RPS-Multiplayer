@@ -14,6 +14,8 @@ var refPlayers = database.ref('players');
 var playerData;
 var player1;
 var player2;
+var player1Snapshot;
+var player2Snapshot;
 //Getting a snapshot of the local data
 //This function allows me to update the page in real-time by adding the 'value' event listener
 refPlayers.on('value', function(snapshot){
@@ -23,14 +25,21 @@ refPlayers.on('value', function(snapshot){
 	}
 	//if both players are in the database then this gets run
 	else if(snapshot.val()[1] && snapshot.val()[2]){
-		console.log('Player 1 and 2 exists')
+		console.log('Player 1 and 2 exists');
+		player1Snapshot = snapshot.val()[1];
+		player2Snapshot = snapshot.val()[2];
 		player1 = true;
 		player2 = true;
-		
+		$('#panel-player1 h4').html(player1Snapshot.name);
+		$('#panel-player2 h4').html(player2Snapshot.name);
+		$('#messageToClient  .input-group').empty().removeClass('input-group').addClass('panel panel-default');
 	}
 	else if(snapshot.val()[1]){
 		console.log('Only player 1 exists');
+		player1Snapshot = snapshot.val()[1];
 		player1 = true;
+		$('#panel-player1 h4').html(player1Snapshot.name);
+		$('#messageToClient  .input-group').empty().removeClass('input-group').addClass('panel panel-default');
 	}
 	else {
 		console.log('this should not occur')
@@ -50,7 +59,7 @@ $('#startBtn').on('click', function(event){
 				wins: 0
 			}
 		}
-		player1 = true;
+		player1 = true;		
 	}
 	else if(!player2) {
 		playerData = {
@@ -63,8 +72,8 @@ $('#startBtn').on('click', function(event){
 		player2 = true;
 		console.log('creating player 2');
 	}
+	$('#messageToClient  .input-group').empty().removeClass('input-group').addClass('panel panel-default');
 	refPlayers.update(playerData);
-
 })
 
 
