@@ -12,6 +12,7 @@ firebase.initializeApp(config);
 var database = firebase.database();
 var refPlayers = database.ref('players');
 var refTurns = database.ref('turn');
+var refChat = database.ref('chat');
 var choices = ['Rock', 'Paper', 'Scissors'];
 var firstplayer = false;
 var secondplayer = false;
@@ -168,6 +169,18 @@ refTurns.on('value', function(snapshot){
 	}
 	
 });
+refChat.on('child_added', function(snapshot){
+	$('#panel-chat').find('.panel-body').append('<p>'+snapshot.val()+'</p>');
+	$("#panel-chat .panel-body").scrollTop($("#panel-chat .panel-body")[0].scrollHeight);
+});
+$(document).on('click', '#chatBtn', function(){
+	event.preventDefault();
+	var chatMessage = $('#chatMessage').val().trim();
+	console.log(chatMessage);
+	refChat.push(chatMessage);
+})
+
+
 
 function checkMoves(){
 	var player1Outcome;

@@ -16,6 +16,7 @@
 }
 .panel-chat > .panel-body{
 	height: 150px;
+	overflow: scroll;
 }
 
 /* Helper Classes */
