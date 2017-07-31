@@ -20,10 +20,10 @@ var player2;
 var turns;
 var currentPlayer;
 var opponent;
-var oddTurn = false;
-var evenTurn = false;
 var player1Choice;
 var player2Choice;
+var intervalId;
+var status = false;
 
 
 
@@ -33,7 +33,6 @@ refPlayers.on('value', function(snapshot) {
 		
 	}
 	else if(!snapshot.child('2').exists() && sessionStorage.getItem('player') === null){
-		console.log('hello');
 		$('#messageToClient').html('<div class="input-group"><input id="playerName" type="text" class="form-control" placeholder="Name"><span class="input-group-btn"><button id="startBtn" class="btn btn-primary" type="button">Start!</button></span></div>');
 		
 	}
@@ -52,10 +51,11 @@ refPlayers.on('value', function(snapshot) {
 			}
 			firstplayer = true;
 			refPlayers.update(playerData);
-			console.log('This should only run if I click submit');
 			sessionStorage.setItem('player', '1');
+			sessionStorage.setItem('name', playerName);
 			$('#messageToClient  .input-group').empty().removeClass('input-group');
 			$('#messageToClient').addClass('panel panel-default').html('<div class="panel-body text-center">Hi ' + playerName + ' you are Player 1</div>');
+
 		}
 		else if (!secondplayer){
 			var playerName = $('#playerName').val().trim();
@@ -67,13 +67,14 @@ refPlayers.on('value', function(snapshot) {
 				}
 			}
 			secondplayer = true;
-			//maybe place turns in here as well
 			refTurns.set(1);
 			refPlayers.update(playerData);
-			console.log('This should only run if I click submit');
 			sessionStorage.setItem('player', '2');
+			sessionStorage.setItem('name', playerName);
 			$('#messageToClient  .input-group').empty().removeClass('input-group');
 			$('#messageToClient').addClass('panel panel-default').html('<div class="panel-body text-center">Hi ' + playerName + ' you are Player 2</div>');
+			$('#messageToClient .panel-body').append('<br>Waiting on ' + opponent.name + ' to make a move!');
+
 		}
 	});
 
@@ -81,13 +82,15 @@ refPlayers.on('value', function(snapshot) {
 
 });
 refPlayers.on('value', function(snapshot){
+	console.log(turns)
 	if(snapshot.child('1').exists()){
 		firstplayer = true;
 		player1 = snapshot.child('1').val();
 		$('#panel-player1 .panel-body h4').html(player1.name);
 		$('#panel-player1 .panel-footer').html('Wins: ' + player1.wins + ' Losses: ' + player1.losses);
-		if(snapshot.child('1').child('choice').exists()){
-			oddTurn = true;
+		if(sessionStorage.getItem('player')==='1'){
+			$('#panel-player1 .panel-body h3').html(player1.choice);
+			console.log('first')
 		}
 	}
 	if(snapshot.child('2').exists()){
@@ -96,71 +99,131 @@ refPlayers.on('value', function(snapshot){
 		$('#panel-player2 .panel-body h4').html(player2.name);
 		$('#panel-player2 .panel-footer').html('Wins: ' + player2.wins + ' Losses: ' + player2.losses);
 		if(snapshot.child('2').child('choice').exists()){
-			evenTurn = true;
 			player1Choice = snapshot.child('1').child('choice').val();
 			player2Choice = snapshot.child('2').child('choice').val();
-			console.log(player1Choice);
 		}
 		
 	}
 	if(sessionStorage.getItem('player') !== null){
 		currentPlayer = snapshot.child(sessionStorage.getItem('player')).val().name;
-		$('#messageToClient').addClass('panel panel-default').html('<div class="panel-body text-center">Hi ' + currentPlayer + ' you are Player ' + sessionStorage.getItem('player') + '</div>');
-
+		if (!status){
+			$('#messageToClient').addClass('panel panel-default').html('<div class="panel-body text-center">Hi ' + currentPlayer + ' you are Player ' + sessionStorage.getItem('player') + '</div>');
+		}
 	}
 	
 });
 
 refTurns.on('value', function(snapshot){
-	turns = snapshot.val();
-	console.log(turns);
-	if(Number(sessionStorage.getItem('player'))%2===1){
-		opponent = player2;
-	}
-	else{
-		opponent = player1;
-	}
-	if(Number(sessionStorage.getItem('player'))%2===turns%2){
-		$('#messageToClient .panel-body').append('<br>My Turn');
-		if(oddTurn&&evenTurn){
-			$('#panel-player1').find('.panel-body').append('<h3>' + player1Choice + '</h3>')
-			$('#panel-player2').find('.panel-body').append('<h3>' + player2Choice + '</h3>')
-
+	if(snapshot.exists()){
+		turns = snapshot.val();
+		console.log(turns);
+		if(Number(sessionStorage.getItem('player'))%2===1){
+			opponent = player2;
 		}
 		else{
-			$('#panel-player' + sessionStorage.getItem('player')).find('.panel-body').append('<div id="choices" class="btn-group-vertical" role="group"></div>');
-			for(i=0; i<choices.length;i++){
-				$('#choices').append('<div class="btn-group" role="group"><button type="button" class="btn btn-default choices">' + choices[i] + '</button></div>');
+			opponent = player1;
+		}
+		if(Number(sessionStorage.getItem('player'))===turns){
+			if(turns===1 || turns===2){
+				$('#panel-player' + sessionStorage.getItem('player')).find('.panel-body h3').html('');
+				$('#panel-player' + sessionStorage.getItem('player')).find('.panel-body').append('<div id="choices" class="btn-group-vertical" role="group"></div>');
+				for(i=0; i<choices.length;i++){
+					$('#choices').append('<div class="btn-group" role="group"><button type="button" class="btn btn-default choices">' + choices[i] + '</button></div>');
+				}
+				$('#messageToClient').addClass('panel panel-default').html('<div class="panel-body text-center">Hi ' + sessionStorage.getItem('name') + ' you are Player ' + sessionStorage.getItem('player') + '</div>');
+				$('#messageToClient .panel-body').append('<br>My Turn');
+				status = true;
 			}
+		}
+		else if(snapshot.exists()){
+			$('#messageToClient').addClass('panel panel-default').html('<div class="panel-body text-center">Hi ' + sessionStorage.getItem('name') + ' you are Player ' + sessionStorage.getItem('player') + '</div>');
+			$('#messageToClient .panel-body').append('<br>Waiting on ' + opponent.name + ' to make a move!');
+		}
+		if(turns===3){
+			$('#panel-player1').find('h3').html(player1Choice);
+			$('#panel-player2').find('h3').html(player2Choice);
+			checkMoves();
+		}
+
+		$(document).on('click', '.choices', function(event){
+			event.preventDefault();
+			playerChoice = $(this).html();
+			$(this).closest('#choices').parent().find('h3').html(playerChoice);
+			$(this).closest('#choices').remove();
+			if(sessionStorage.getItem('player') ==='1' && turns===1){
+				refPlayers.child(1).update({choice: playerChoice});
+				refTurns.set(2);
+			}
+			else if(sessionStorage.getItem('player') ==='2' && turns===2) {
+				refPlayers.child(2).update({choice: playerChoice});
+				refTurns.set(3);
+			}
+		})
+	}
+	else if(sessionStorage.getItem('player')){
+		$('#messageToClient').addClass('panel panel-default').html('<div class="panel-body text-center">Hi ' + sessionStorage.getItem('name') + ' you are Player ' + sessionStorage.getItem('player') + '</div>');
+		$('#messageToClient .panel-body').append('<br>Waiting for another player to join.');
+		$('#panel-player2').find('h4').html('Waiting for Player 2');
+		$('#choices').remove();
+	}
+	
+});
+
+function checkMoves(){
+	var player1Outcome;
+	var player1Wins = player1.wins;
+	var player1Losses = player1.losses;
+	var player2Wins = player2.wins;
+	var player2Losses = player2.losses;
+	if(player1.choice === player2.choice){
+		$('#panel-outcome').find('h4').html('TIE');
+	}
+	else if(player1.choice === 'Rock'){
+		if(player2.choice === 'Paper'){
+			player1Outcome = false;
+		}
+		else {
+			player1Outcome = true;
+		}
+	}
+	else if(player1.choice === 'Paper'){
+		if(player2.choice === 'Scissors'){
+			player1Outcome = false;
+		}
+		else {
+			player1Outcome = true;
 		}
 	}
 	else {
-		$('#messageToClient .panel-body').append('<br>Waiting on ' + opponent.name + ' to make a move!');
-		if(oddTurn&&evenTurn){
-			$('#panel-player1').find('.panel-body').append('<h3>' + player1Choice + '</h3>')
-			$('#panel-player2').find('.panel-body').append('<h3>' + player2Choice + '</h3>')
-
+		if(player2.choice === 'Rock'){
+			player1Outcome = false;
+		}
+		else {
+			player1Outcome = true;
 		}
 	}
-	$(document).on('click', '.choices', function(event){
-		event.preventDefault();
-		playerChoice = $(this).html();
-		$(this).closest('#choices').parent().append('<h3>' + playerChoice + '</h3>');
-		$(this).closest('#choices').remove();
-		if(sessionStorage.getItem('player') ==='1' && turns%2===1){
-			refPlayers.child(1).update({choice: playerChoice});
-			oddTurn = true;
-			turns++;
-		}
-		else if(sessionStorage.getItem('player') ==='2' && turns%2===0) {
-			console.log('This should only appear after second player picks');
-			refPlayers.child(2).update({choice: playerChoice});
-			evenTurn = true;
-			turns++;
+	if(player1Outcome && player1.choice !== player2.choice){
+		player1Wins++;
+		player2Losses++;
+		$('#panel-outcome').find('h4').html(player1.name + ' Wins');
+		refPlayers.child(1).update({wins: player1Wins});
+		refPlayers.child(2).update({losses: player2Losses});
+	}
+	else if(player1.choice !== player2.choice) {
+		player2Wins++
+		player1Losses++
+		$('#panel-outcome').find('h4').html(player2.name + ' Wins');
+		refPlayers.child(2).update({wins: player2Wins});
+		refPlayers.child(1).update({losses: player1Losses});
+	}
 
-		}
-		refTurns.set(turns);
-		console.log('hey');
-	})
-});
+	setTimeout(function(){
+		refTurns.set(1);
+		$('#panel-player1').find('h3').html('');
+		$('#panel-outcome').find('h4').html('')
+		$('#panel-player2').find('h3').html('');
+	}, 5000)
+}
 
+refPlayers.child(2).onDisconnect().remove();
+refTurns.onDisconnect().remove();

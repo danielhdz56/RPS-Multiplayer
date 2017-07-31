@@ -3,6 +3,9 @@
 	height: 200px;
 	position: relative;
 }
+.status{
+	display: none;
+}
 .panel-mainScreen > .panel-footer {
 	border-top: 0;
 	background: inherit;
