@@ -1,10 +1,20 @@
 /* Content Specific Styling */
-.panel-mainScreen > .panel-body{
-	height: 300px;
+.panel-mainScreen{
+	height: 200px;
+	position: relative;
+}
+.panel-mainScreen > .panel-footer {
+	border-top: 0;
+	background: inherit;
+	position: absolute;
+	bottom: 0;
+	width: 100%;
+	text-align: center;
 }
 .panel-chat > .panel-body{
 	height: 150px;
 }
+
 /* Helper Classes */
 .mt-0 {
 	margin-top: 0;

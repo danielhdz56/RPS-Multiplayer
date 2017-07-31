@@ -11,69 +11,156 @@ firebase.initializeApp(config);
 //Creating an instance of firebase to reference
 var database = firebase.database();
 var refPlayers = database.ref('players');
-var playerData;
+var refTurns = database.ref('turn');
+var choices = ['Rock', 'Paper', 'Scissors'];
+var firstplayer = false;
+var secondplayer = false;
 var player1;
 var player2;
-var player1Snapshot;
-var player2Snapshot;
-//Getting a snapshot of the local data
-//This function allows me to update the page in real-time by adding the 'value' event listener
+var turns;
+var currentPlayer;
+var opponent;
+var oddTurn = false;
+var evenTurn = false;
+var player1Choice;
+var player2Choice;
+
+
+
+refPlayers.on('value', function(snapshot) {
+	if(!snapshot.child('1').exists()){
+		$('#messageToClient').html('<div class="input-group"><input id="playerName" type="text" class="form-control" placeholder="Name"><span class="input-group-btn"><button id="startBtn" class="btn btn-primary" type="button">Start!</button></span></div>');
+		
+	}
+	else if(!snapshot.child('2').exists() && sessionStorage.getItem('player') === null){
+		console.log('hello');
+		$('#messageToClient').html('<div class="input-group"><input id="playerName" type="text" class="form-control" placeholder="Name"><span class="input-group-btn"><button id="startBtn" class="btn btn-primary" type="button">Start!</button></span></div>');
+		
+	}
+
+	$(document).on('click', '#startBtn', function(event){
+		event.preventDefault();
+		//This declares playerName to be the input value
+		if (!firstplayer) {
+			var playerName = $('#playerName').val().trim();
+			playerData = {
+				1: {
+					losses: 0,
+					name: playerName,
+					wins: 0
+				}
+			}
+			firstplayer = true;
+			refPlayers.update(playerData);
+			console.log('This should only run if I click submit');
+			sessionStorage.setItem('player', '1');
+			$('#messageToClient  .input-group').empty().removeClass('input-group');
+			$('#messageToClient').addClass('panel panel-default').html('<div class="panel-body text-center">Hi ' + playerName + ' you are Player 1</div>');
+		}
+		else if (!secondplayer){
+			var playerName = $('#playerName').val().trim();
+			playerData = {
+				2: {
+					losses: 0,
+					name: playerName,
+					wins: 0
+				}
+			}
+			secondplayer = true;
+			//maybe place turns in here as well
+			refTurns.set(1);
+			refPlayers.update(playerData);
+			console.log('This should only run if I click submit');
+			sessionStorage.setItem('player', '2');
+			$('#messageToClient  .input-group').empty().removeClass('input-group');
+			$('#messageToClient').addClass('panel panel-default').html('<div class="panel-body text-center">Hi ' + playerName + ' you are Player 2</div>');
+		}
+	});
+
+
+
+});
 refPlayers.on('value', function(snapshot){
-	//if there are no players then nothing happens
-	if(!snapshot.val()) {
-		console.log('There is nothing in the database');
+	if(snapshot.child('1').exists()){
+		firstplayer = true;
+		player1 = snapshot.child('1').val();
+		$('#panel-player1 .panel-body h4').html(player1.name);
+		$('#panel-player1 .panel-footer').html('Wins: ' + player1.wins + ' Losses: ' + player1.losses);
+		if(snapshot.child('1').child('choice').exists()){
+			oddTurn = true;
+		}
 	}
-	//if both players are in the database then this gets run
-	else if(snapshot.val()[1] && snapshot.val()[2]){
-		console.log('Player 1 and 2 exists');
-		player1Snapshot = snapshot.val()[1];
-		player2Snapshot = snapshot.val()[2];
-		player1 = true;
-		player2 = true;
-		$('#panel-player1 h4').html(player1Snapshot.name);
-		$('#panel-player2 h4').html(player2Snapshot.name);
-		$('#messageToClient  .input-group').empty().removeClass('input-group').addClass('panel panel-default');
+	if(snapshot.child('2').exists()){
+		secondplayer = true;
+		player2 = snapshot.child('2').val();
+		$('#panel-player2 .panel-body h4').html(player2.name);
+		$('#panel-player2 .panel-footer').html('Wins: ' + player2.wins + ' Losses: ' + player2.losses);
+		if(snapshot.child('2').child('choice').exists()){
+			evenTurn = true;
+			player1Choice = snapshot.child('1').child('choice').val();
+			player2Choice = snapshot.child('2').child('choice').val();
+			console.log(player1Choice);
+		}
+		
 	}
-	else if(snapshot.val()[1]){
-		console.log('Only player 1 exists');
-		player1Snapshot = snapshot.val()[1];
-		player1 = true;
-		$('#panel-player1 h4').html(player1Snapshot.name);
-		$('#messageToClient  .input-group').empty().removeClass('input-group').addClass('panel panel-default');
+	if(sessionStorage.getItem('player') !== null){
+		currentPlayer = snapshot.child(sessionStorage.getItem('player')).val().name;
+		$('#messageToClient').addClass('panel panel-default').html('<div class="panel-body text-center">Hi ' + currentPlayer + ' you are Player ' + sessionStorage.getItem('player') + '</div>');
+
+	}
+	
+});
+
+refTurns.on('value', function(snapshot){
+	turns = snapshot.val();
+	console.log(turns);
+	if(Number(sessionStorage.getItem('player'))%2===1){
+		opponent = player2;
+	}
+	else{
+		opponent = player1;
+	}
+	if(Number(sessionStorage.getItem('player'))%2===turns%2){
+		$('#messageToClient .panel-body').append('<br>My Turn');
+		if(oddTurn&&evenTurn){
+			$('#panel-player1').find('.panel-body').append('<h3>' + player1Choice + '</h3>')
+			$('#panel-player2').find('.panel-body').append('<h3>' + player2Choice + '</h3>')
+
+		}
+		else{
+			$('#panel-player' + sessionStorage.getItem('player')).find('.panel-body').append('<div id="choices" class="btn-group-vertical" role="group"></div>');
+			for(i=0; i<choices.length;i++){
+				$('#choices').append('<div class="btn-group" role="group"><button type="button" class="btn btn-default choices">' + choices[i] + '</button></div>');
+			}
+		}
 	}
 	else {
-		console.log('this should not occur')
-	}
-});
-//This function will update the database with the name of the player 
-$('#startBtn').on('click', function(event){
-	event.preventDefault();
-	//This declares playerName to be the input value
-	var playerName = $('#playerName').val().trim();
-	// I create an object that will hold his info and pass it on to firebase
-	if(!player1){
-		playerData = {
-			1: {
-				lossess: 0,
-				name: playerName,
-				wins: 0
-			}
-		}
-		player1 = true;		
-	}
-	else if(!player2) {
-		playerData = {
-			2: {
-				lossess: 0,
-				name: playerName,
-				wins: 0
-			}
-		}
-		player2 = true;
-		console.log('creating player 2');
-	}
-	$('#messageToClient  .input-group').empty().removeClass('input-group').addClass('panel panel-default');
-	refPlayers.update(playerData);
-})
+		$('#messageToClient .panel-body').append('<br>Waiting on ' + opponent.name + ' to make a move!');
+		if(oddTurn&&evenTurn){
+			$('#panel-player1').find('.panel-body').append('<h3>' + player1Choice + '</h3>')
+			$('#panel-player2').find('.panel-body').append('<h3>' + player2Choice + '</h3>')
 
+		}
+	}
+	$(document).on('click', '.choices', function(event){
+		event.preventDefault();
+		playerChoice = $(this).html();
+		$(this).closest('#choices').parent().append('<h3>' + playerChoice + '</h3>');
+		$(this).closest('#choices').remove();
+		if(sessionStorage.getItem('player') ==='1' && turns%2===1){
+			refPlayers.child(1).update({choice: playerChoice});
+			oddTurn = true;
+			turns++;
+		}
+		else if(sessionStorage.getItem('player') ==='2' && turns%2===0) {
+			console.log('This should only appear after second player picks');
+			refPlayers.child(2).update({choice: playerChoice});
+			evenTurn = true;
+			turns++;
+
+		}
+		refTurns.set(turns);
+		console.log('hey');
+	})
+});
 
