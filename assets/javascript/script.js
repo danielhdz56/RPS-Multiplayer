@@ -25,6 +25,7 @@ var player1Choice;
 var player2Choice;
 var intervalId;
 var status = false;
+var disconnected = false;
 
 
 
@@ -54,6 +55,8 @@ refPlayers.on('value', function(snapshot) {
 			refPlayers.update(playerData);
 			sessionStorage.setItem('player', '1');
 			sessionStorage.setItem('name', playerName);
+			sessionStorage.setItem('losses', '0');
+			sessionStorage.setItem('wins', '0');
 			$('#messageToClient  .input-group').empty().removeClass('input-group');
 			$('#messageToClient').addClass('panel panel-default').html('<div class="panel-body text-center">Hi ' + playerName + ' you are Player 1</div>');
 
@@ -72,6 +75,8 @@ refPlayers.on('value', function(snapshot) {
 			refPlayers.update(playerData);
 			sessionStorage.setItem('player', '2');
 			sessionStorage.setItem('name', playerName);
+			sessionStorage.setItem('losses', '0');
+			sessionStorage.setItem('wins', '0');
 			$('#messageToClient  .input-group').empty().removeClass('input-group');
 			$('#messageToClient').addClass('panel panel-default').html('<div class="panel-body text-center">Hi ' + playerName + ' you are Player 2</div>');
 			$('#messageToClient .panel-body').append('<br>Waiting on ' + opponent.name + ' to make a move!');
@@ -83,7 +88,6 @@ refPlayers.on('value', function(snapshot) {
 
 });
 refPlayers.on('value', function(snapshot){
-	console.log(turns)
 	if(snapshot.child('1').exists()){
 		firstplayer = true;
 		player1 = snapshot.child('1').val();
@@ -91,7 +95,7 @@ refPlayers.on('value', function(snapshot){
 		$('#panel-player1 .panel-footer').html('Wins: ' + player1.wins + ' Losses: ' + player1.losses);
 		if(sessionStorage.getItem('player')==='1'){
 			$('#panel-player1 .panel-body h3').html(player1.choice);
-			console.log('first')
+			console.log('first');
 		}
 	}
 	if(snapshot.child('2').exists()){
@@ -105,7 +109,7 @@ refPlayers.on('value', function(snapshot){
 		}
 		
 	}
-	if(sessionStorage.getItem('player') !== null){
+	if((sessionStorage.getItem('player') !== null) && (!disconnected)){
 		currentPlayer = snapshot.child(sessionStorage.getItem('player')).val().name;
 		if (!status){
 			$('#messageToClient').addClass('panel panel-default').html('<div class="panel-body text-center">Hi ' + currentPlayer + ' you are Player ' + sessionStorage.getItem('player') + '</div>');
@@ -117,7 +121,6 @@ refPlayers.on('value', function(snapshot){
 refTurns.on('value', function(snapshot){
 	if(snapshot.exists()){
 		turns = snapshot.val();
-		console.log(turns);
 		if(Number(sessionStorage.getItem('player'))%2===1){
 			opponent = player2;
 		}
@@ -175,9 +178,11 @@ refChat.on('child_added', function(snapshot){
 });
 $(document).on('click', '#chatBtn', function(){
 	event.preventDefault();
+	var messenger = sessionStorage.getItem('name');
 	var chatMessage = $('#chatMessage').val().trim();
-	console.log(chatMessage);
-	refChat.push(chatMessage);
+	console.log(messenger + ": " + chatMessage)
+	var messageToSend = messenger + ": " + chatMessage;
+	refChat.push(messageToSend);
 })
 
 
@@ -229,6 +234,14 @@ function checkMoves(){
 		refPlayers.child(2).update({wins: player2Wins});
 		refPlayers.child(1).update({losses: player1Losses});
 	}
+	if(sessionStorage.getItem('player')==='1'){
+		sessionStorage.setItem('wins', player1.wins)
+		sessionStorage.setItem('losses', player1.losses)
+	}
+	else if(sessionStorage.getItem('player')==='2'){
+		sessionStorage.setItem('wins', player2.wins)
+		sessionStorage.setItem('losses', player2.losses)
+	}
 
 	setTimeout(function(){
 		refTurns.set(1);
@@ -240,3 +253,20 @@ function checkMoves(){
 
 refPlayers.child(2).onDisconnect().remove();
 refTurns.onDisconnect().remove();
+
+refPlayers.on('child_removed', function(snapshot){
+	var playerName = sessionStorage.getItem('name');
+	var playerLosses = Number(sessionStorage.getItem('losses'));
+	var playerWins = Number(sessionStorage.getItem('wins'));
+	sessionStorage.setItem('player', '1')
+	playerName = 
+	playerData = {
+		1: {
+			losses: playerLosses,
+			name: playerName,
+			wins: playerWins
+		}
+	}
+	refPlayers.update(playerData);
+})
+
