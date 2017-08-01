@@ -25,7 +25,6 @@ var player1Choice;
 var player2Choice;
 var intervalId;
 var status = false;
-var disconnected = false;
 
 
 
@@ -37,6 +36,28 @@ refPlayers.on('value', function(snapshot) {
 	else if(!snapshot.child('2').exists() && sessionStorage.getItem('player') === null){
 		$('#messageToClient').html('<div class="input-group"><input id="playerName" type="text" class="form-control" placeholder="Name"><span class="input-group-btn"><button id="startBtn" class="btn btn-primary" type="button">Start!</button></span></div>');
 		
+	}
+	if(snapshot.child('1').exists()){
+		firstplayer = true;
+		player1 = snapshot.child('1').val();
+		$('#panel-player1 .panel-body h4').html(player1.name);
+		$('#panel-player1 .panel-footer').html('Wins: ' + player1.wins + ' Losses: ' + player1.losses);
+	}
+	if(snapshot.child('2').exists()){
+		secondplayer = true;
+		player2 = snapshot.child('2').val();
+		$('#panel-player2 .panel-body h4').html(player2.name);
+		$('#panel-player2 .panel-footer').html('Wins: ' + player2.wins + ' Losses: ' + player2.losses);
+		if(snapshot.child('2').child('choice').exists()){
+			player1Choice = snapshot.child('1').child('choice').val();
+			player2Choice = snapshot.child('2').child('choice').val();
+		}
+	}
+	if((sessionStorage.getItem('player') !== null)){
+		currentPlayer = snapshot.child(sessionStorage.getItem('player')).val().name;
+		if (!status){
+			$('#messageToClient').addClass('panel panel-default').html('<div class="panel-body text-center">Hi ' + currentPlayer + ' you are Player ' + sessionStorage.getItem('player') + '</div>');
+		}
 	}
 
 	$(document).on('click', '#startBtn', function(event){
@@ -83,39 +104,6 @@ refPlayers.on('value', function(snapshot) {
 
 		}
 	});
-
-
-
-});
-refPlayers.on('value', function(snapshot){
-	if(snapshot.child('1').exists()){
-		firstplayer = true;
-		player1 = snapshot.child('1').val();
-		$('#panel-player1 .panel-body h4').html(player1.name);
-		$('#panel-player1 .panel-footer').html('Wins: ' + player1.wins + ' Losses: ' + player1.losses);
-		if(sessionStorage.getItem('player')==='1'){
-			$('#panel-player1 .panel-body h3').html(player1.choice);
-			console.log('first');
-		}
-	}
-	if(snapshot.child('2').exists()){
-		secondplayer = true;
-		player2 = snapshot.child('2').val();
-		$('#panel-player2 .panel-body h4').html(player2.name);
-		$('#panel-player2 .panel-footer').html('Wins: ' + player2.wins + ' Losses: ' + player2.losses);
-		if(snapshot.child('2').child('choice').exists()){
-			player1Choice = snapshot.child('1').child('choice').val();
-			player2Choice = snapshot.child('2').child('choice').val();
-		}
-		
-	}
-	if((sessionStorage.getItem('player') !== null) && (!disconnected)){
-		currentPlayer = snapshot.child(sessionStorage.getItem('player')).val().name;
-		if (!status){
-			$('#messageToClient').addClass('panel panel-default').html('<div class="panel-body text-center">Hi ' + currentPlayer + ' you are Player ' + sessionStorage.getItem('player') + '</div>');
-		}
-	}
-	
 });
 
 refTurns.on('value', function(snapshot){
@@ -172,21 +160,22 @@ refTurns.on('value', function(snapshot){
 	}
 	
 });
+//makes sure to append all messages and automatically scrolls to last message
 refChat.on('child_added', function(snapshot){
 	$('#panel-chat').find('.panel-body').append('<p>'+snapshot.val()+'</p>');
 	$("#panel-chat .panel-body").scrollTop($("#panel-chat .panel-body")[0].scrollHeight);
 });
+//updates firebase with chat
 $(document).on('click', '#chatBtn', function(){
 	event.preventDefault();
 	var messenger = sessionStorage.getItem('name');
 	var chatMessage = $('#chatMessage').val().trim();
-	console.log(messenger + ": " + chatMessage)
 	var messageToSend = messenger + ": " + chatMessage;
 	refChat.push(messageToSend);
 })
 
 
-
+//makes the comparison between both players
 function checkMoves(){
 	var player1Outcome;
 	var player1Wins = player1.wins;
@@ -242,7 +231,7 @@ function checkMoves(){
 		sessionStorage.setItem('wins', player2.wins)
 		sessionStorage.setItem('losses', player2.losses)
 	}
-
+	//waits five seconds before clearing the outcome and panel-player screens
 	setTimeout(function(){
 		refTurns.set(1);
 		$('#panel-player1').find('h3').html('');
@@ -251,9 +240,11 @@ function checkMoves(){
 	}, 5000)
 }
 
-refPlayers.child(2).onDisconnect().remove();
+//this makes sure to remove second player
+refPlayers.child('2').onDisconnect().remove();
 refTurns.onDisconnect().remove();
 
+//whatever player stays connected is now player1 
 refPlayers.on('child_removed', function(snapshot){
 	var playerName = sessionStorage.getItem('name');
 	var playerLosses = Number(sessionStorage.getItem('losses'));
@@ -269,4 +260,3 @@ refPlayers.on('child_removed', function(snapshot){
 	}
 	refPlayers.update(playerData);
 })
-
