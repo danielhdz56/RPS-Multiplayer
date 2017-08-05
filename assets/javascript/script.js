@@ -1,180 +1,236 @@
 // Initialize Firebase
 var config = {
-apiKey: "AIzaSyDMGmU6sAF0gsqozNxxspZVOmE9I7j-e9Y",
-authDomain: "rockpaperscissors-430d4.firebaseapp.com",
-databaseURL: "https://rockpaperscissors-430d4.firebaseio.com",
-projectId: "rockpaperscissors-430d4",
+apiKey: "AIzaSyCbEBWJpgRA8xE4kL_ePr2d36h09tY7dDQ",
+authDomain: "rps2-9d634.firebaseapp.com",
+databaseURL: "https://rps2-9d634.firebaseio.com",
+projectId: "rps2-9d634",
 storageBucket: "",
-messagingSenderId: "954071881956"
+messagingSenderId: "289286483599"
 };
 firebase.initializeApp(config);
-//Creating an instance of firebase to reference
 var database = firebase.database();
 var refPlayers = database.ref('players');
 var refTurns = database.ref('turn');
 var refChat = database.ref('chat');
-var choices = ['Rock', 'Paper', 'Scissors'];
-var firstplayer = false;
-var secondplayer = false;
+var playerNumber;
+var name;
 var player1;
 var player2;
-var turns;
-var currentPlayer;
 var opponent;
-var player1Choice;
-var player2Choice;
-var intervalId;
-var status = false;
+var choices = ['Rock', 'Paper', 'Scissors'];
+var playerChoice;
+var turn;
 
 
 
-refPlayers.on('value', function(snapshot) {
-	if(!snapshot.child('1').exists()){
-		$('#messageToClient').html('<div class="input-group"><input id="playerName" type="text" class="form-control" placeholder="Name"><span class="input-group-btn"><button id="startBtn" class="btn btn-primary" type="button">Start!</button></span></div>');
-		
+if(sessionStorage.getItem('player')!==null && sessionStorage.getItem('player')!=='undefined'){
+	var data;
+	playerNumber = sessionStorage.getItem('player');
+	playerName = sessionStorage.getItem('name');
+	playerWins = Number(sessionStorage.getItem('wins'));
+	playerLosses = Number(sessionStorage.getItem('losses'));
+	playerChoice = sessionStorage.getItem('choice');
+	rpsTurn = Number(sessionStorage.getItem('turn'));
+	if(playerNumber==1){
+		data = {
+			1: {
+				name: playerName,
+				wins: playerWins,
+				losses: playerLosses,
+				choice: playerChoice
+			}
+		};
+		$('#panel-player1 .panel-body h3').html(playerChoice);
 	}
-	else if(!snapshot.child('2').exists() && sessionStorage.getItem('player') === null){
-		$('#messageToClient').html('<div class="input-group"><input id="playerName" type="text" class="form-control" placeholder="Name"><span class="input-group-btn"><button id="startBtn" class="btn btn-primary" type="button">Start!</button></span></div>');
-		
+	else{
+		data = {
+			2: {
+				name: playerName,
+				wins: playerWins,
+				losses: playerLosses,
+				choice: playerChoice 
+			}
+		};
 	}
+	var messenger = sessionStorage.getItem('name');
+	refChat.update({
+		'messenger': messenger + ' HAS CONNECTED!'
+	});
+	refPlayers.update(data);
+	refTurns.set(rpsTurn);
+	refPlayers.once('value', function(snapshot){
+		name = snapshot.val()[playerNumber].name;
+	})
+	$('#messageToClient').empty().addClass('panel panel-default').append('<div class="panel-body text-center">Hi ' + name + ' you are Player ' + playerNumber + '</div><p id="message"></p>')
+}
+else if(sessionStorage.getItem('player')==='undefined') {
+	$('#messageToClient').empty().addClass('panel panel-default').append('<div class="panel-body text-center">Hi ' + name + ' you are a Spectator</div>')
+}
+refPlayers.on('value', function(snapshot){
+	if(sessionStorage.getItem('player')!==null && sessionStorage.getItem('player')!=='undefined'){
+		//this makes sure to remove player that disconnects
+		refPlayers.child(sessionStorage.getItem('player')).onDisconnect().remove();
+		refTurns.onDisconnect().remove();
+		var messenger = sessionStorage.getItem('name');
+		refChat.onDisconnect().update({
+			'messenger': messenger + ' HAS DISCONNECTED!'
+		});
+	}
+	player1 = snapshot.child('1').val();
+	player2 = snapshot.child('2').val();
 	if(snapshot.child('1').exists()){
-		firstplayer = true;
-		player1 = snapshot.child('1').val();
 		$('#panel-player1 .panel-body h4').html(player1.name);
 		$('#panel-player1 .panel-footer').html('Wins: ' + player1.wins + ' Losses: ' + player1.losses);
 	}
+	else{
+		$('#panel-player1 .panel-body h4').html('Waiting for Player 1');
+		$('#panel-player1 .panel-footer').html('');
+		$('#choices').remove();
+		$('#message').html('');
+	}
 	if(snapshot.child('2').exists()){
-		secondplayer = true;
 		player2 = snapshot.child('2').val();
 		$('#panel-player2 .panel-body h4').html(player2.name);
 		$('#panel-player2 .panel-footer').html('Wins: ' + player2.wins + ' Losses: ' + player2.losses);
-		if(snapshot.child('2').child('choice').exists()){
-			player1Choice = snapshot.child('1').child('choice').val();
-			player2Choice = snapshot.child('2').child('choice').val();
-		}
 	}
-	if((sessionStorage.getItem('player') !== null)){
-		currentPlayer = snapshot.child(sessionStorage.getItem('player')).val().name;
-		if (!status){
-			$('#messageToClient').addClass('panel panel-default').html('<div class="panel-body text-center">Hi ' + currentPlayer + ' you are Player ' + sessionStorage.getItem('player') + '</div>');
-		}
+	else{
+		$('#panel-player2 .panel-body h4').html('Waiting for Player 2');
+		$('#panel-player2 .panel-footer').html('');
+		$('#choices').remove();
+		$('#message').html('');
 	}
-
-	$(document).on('click', '#startBtn', function(event){
-		event.preventDefault();
-		//This declares playerName to be the input value
-		if (!firstplayer) {
-			var playerName = $('#playerName').val().trim();
-			playerData = {
-				1: {
-					losses: 0,
-					name: playerName,
-					wins: 0
-				}
-			}
-			firstplayer = true;
-			refPlayers.update(playerData);
-			sessionStorage.setItem('player', '1');
-			sessionStorage.setItem('name', playerName);
-			sessionStorage.setItem('losses', '0');
-			sessionStorage.setItem('wins', '0');
-			$('#messageToClient  .input-group').empty().removeClass('input-group');
-			$('#messageToClient').addClass('panel panel-default').html('<div class="panel-body text-center">Hi ' + playerName + ' you are Player 1</div>');
-
-		}
-		else if (!secondplayer){
-			var playerName = $('#playerName').val().trim();
-			playerData = {
-				2: {
-					losses: 0,
-					name: playerName,
-					wins: 0
-				}
-			}
-			secondplayer = true;
-			refTurns.set(1);
-			refPlayers.update(playerData);
-			sessionStorage.setItem('player', '2');
-			sessionStorage.setItem('name', playerName);
-			sessionStorage.setItem('losses', '0');
-			sessionStorage.setItem('wins', '0');
-			$('#messageToClient  .input-group').empty().removeClass('input-group');
-			$('#messageToClient').addClass('panel panel-default').html('<div class="panel-body text-center">Hi ' + playerName + ' you are Player 2</div>');
-			$('#messageToClient .panel-body').append('<br>Waiting on ' + opponent.name + ' to make a move!');
-
-		}
-	});
 });
-
 refTurns.on('value', function(snapshot){
-	if(snapshot.exists()){
-		turns = snapshot.val();
-		if(Number(sessionStorage.getItem('player'))%2===1){
-			opponent = player2;
+	turn = snapshot.val();
+	if(turn===3){
+		sessionStorage.setItem('turn', 1)
+		$('#panel-player1').find('h3').html(player1.choice);
+		$('#panel-player2').find('h3').html(player2.choice);
+		checkMoves();
+	}
+	else {
+		if(snapshot.val()!==null){
+			sessionStorage.setItem('turn', turn);
 		}
-		else{
-			opponent = player1;
+		if(snapshot.val()==sessionStorage.getItem('player')){
+			$('#message').html('<p>It\'s your turn!</p>');
+			$('#choices').remove();
+			$('.panel-mainScreen .panel-body h3').html('');
+			$('#panel-player' + sessionStorage.getItem('player')).find('.panel-body').append('<div id="choices" class="btn-group-vertical" role="group"></div>');
+			for(i=0; i<choices.length;i++){
+				$('#choices').append('<div class="btn-group" role="group"><button type="button" class="btn btn-default choices">' + choices[i] + '</button></div>');
+			}
 		}
-		if(Number(sessionStorage.getItem('player'))===turns){
-			if(turns===1 || turns===2){
-				$('#panel-player' + sessionStorage.getItem('player')).find('.panel-body h3').html('');
+		else if(sessionStorage.getItem('player')!=='undefined' && snapshot.val()){
+			refPlayers.once('value', function(snapshot){
+				opponent = snapshot.child(turn).val();
+				if(opponent!==null){
+					$('#message').html('<p>Waiting on ' + opponent.name + ' to make a move!</p>');
+				}
+			});
+			
+		}
+	}	
+});
+$('#startBtn').on('click', function(event){
+	event.preventDefault();
+	name = $('#playerName').val().trim();
+	wins = 0;
+	losses = 0;
+	refPlayers.once('value', function(snapshot){
+		var data;
+		if(!snapshot.hasChild('1')){
+			data = {
+				1: {
+					name: name,
+					wins: wins,
+					losses: losses
+				}
+			};
+			playerNumber = 1;
+			if(snapshot.hasChild('2')){
+				refTurns.set(1);
+				sessionStorage.setItem('player', playerNumber)
 				$('#panel-player' + sessionStorage.getItem('player')).find('.panel-body').append('<div id="choices" class="btn-group-vertical" role="group"></div>');
 				for(i=0; i<choices.length;i++){
 					$('#choices').append('<div class="btn-group" role="group"><button type="button" class="btn btn-default choices">' + choices[i] + '</button></div>');
 				}
-				$('#messageToClient').addClass('panel panel-default').html('<div class="panel-body text-center">Hi ' + sessionStorage.getItem('name') + ' you are Player ' + sessionStorage.getItem('player') + '</div>');
-				$('#messageToClient .panel-body').append('<br>My Turn');
-				status = true;
 			}
 		}
-		else if(snapshot.exists()){
-			$('#messageToClient').addClass('panel panel-default').html('<div class="panel-body text-center">Hi ' + sessionStorage.getItem('name') + ' you are Player ' + sessionStorage.getItem('player') + '</div>');
-			$('#messageToClient .panel-body').append('<br>Waiting on ' + opponent.name + ' to make a move!');
+		else if(!snapshot.hasChild('2')){
+			data = {
+				2: {
+					name: name,
+					wins: wins,
+					losses: losses
+				}
+			};
+			playerNumber = 2;
+			refTurns.set(1);
 		}
-		if(turns===3){
-			$('#panel-player1').find('h3').html(player1Choice);
-			$('#panel-player2').find('h3').html(player2Choice);
-			checkMoves();
+		else {
+			data = {
+				anon: {
+					name: name
+				}
+			};
 		}
-
-		$(document).on('click', '.choices', function(event){
-			event.preventDefault();
-			playerChoice = $(this).html();
-			$(this).closest('#choices').parent().find('h3').html(playerChoice);
-			$(this).closest('#choices').remove();
-			if(sessionStorage.getItem('player') ==='1' && turns===1){
-				refPlayers.child(1).update({choice: playerChoice});
-				refTurns.set(2);
-			}
-			else if(sessionStorage.getItem('player') ==='2' && turns===2) {
-				refPlayers.child(2).update({choice: playerChoice});
-				refTurns.set(3);
-			}
-		})
+		sessionStorage.setItem('name', name);
+		sessionStorage.setItem('wins', wins);
+		sessionStorage.setItem('losses', losses);
+		sessionStorage.setItem('turn', 1);
+		sessionStorage.setItem('player', playerNumber)
+		refPlayers.update(data)
+	});
+	if(playerNumber){
+		$('#messageToClient').empty().addClass('panel panel-default').append('<div class="panel-body text-center">Hi ' + name + ' you are Player ' + playerNumber + '</div><p id="message"></p>');
+		if(sessionStorage.getItem('player')==='2'){
+			$('#message').html('<p>Waiting on ' + opponent.name + ' to make a move!</p>');
+		}
 	}
-	else if(sessionStorage.getItem('player')){
-		$('#messageToClient').addClass('panel panel-default').html('<div class="panel-body text-center">Hi ' + sessionStorage.getItem('name') + ' you are Player ' + sessionStorage.getItem('player') + '</div>');
-		$('#messageToClient .panel-body').append('<br>Waiting for another player to join.');
-		$('#panel-player2').find('h4').html('Waiting for Player 2');
-		$('#choices').remove();
+	else {
+		$('#messageToClient').empty().addClass('panel panel-default').append('<div class="panel-body text-center">Hi ' + name + ' you are a Spectator</div>')
 	}
-	
+});
+$(document).on('click', '.choices', function(event){
+	event.preventDefault();
+	playerChoice = $(this).html();
+	$(this).closest('#choices').parent().find('h3').html(playerChoice);
+	$(this).closest('#choices').remove();
+	if(sessionStorage.getItem('player') ==='1' && turn===1){
+		refPlayers.child(1).update({choice: playerChoice});
+		refTurns.set(2);
+	}
+	else if(sessionStorage.getItem('player') ==='2' && turn===2) {
+		refPlayers.child(2).update({choice: playerChoice});
+		refTurns.set(3);
+	}
+	sessionStorage.setItem('choice', playerChoice);
 });
 //makes sure to append all messages and automatically scrolls to last message
 refChat.on('child_added', function(snapshot){
 	$('#panel-chat').find('.panel-body').append('<p>'+snapshot.val()+'</p>');
 	$("#panel-chat .panel-body").scrollTop($("#panel-chat .panel-body")[0].scrollHeight);
+	console.log('here')
 });
-//updates firebase with chat
+refChat.on('child_changed', function(snapshot){
+	console.log('hereee')
+	$('#panel-chat').find('.panel-body').append('<p>'+snapshot.val()+'</p>');
+	$("#panel-chat .panel-body").scrollTop($("#panel-chat .panel-body")[0].scrollHeight);
+})
 $(document).on('click', '#chatBtn', function(){
 	event.preventDefault();
-	var messenger = sessionStorage.getItem('name');
+	var messenger;
+	if(sessionStorage.getItem('name')===null){
+		messenger = 'Anon';
+	}
+	else {
+		messenger = sessionStorage.getItem('name');
+	}
 	var chatMessage = $('#chatMessage').val().trim();
 	var messageToSend = messenger + ": " + chatMessage;
 	refChat.push(messageToSend);
 })
-
-
 //makes the comparison between both players
 function checkMoves(){
 	var player1Outcome;
@@ -240,23 +296,6 @@ function checkMoves(){
 	}, 5000)
 }
 
-//this makes sure to remove second player
-refPlayers.child('2').onDisconnect().remove();
-refTurns.onDisconnect().remove();
 
-//whatever player stays connected is now player1 
-refPlayers.on('child_removed', function(snapshot){
-	var playerName = sessionStorage.getItem('name');
-	var playerLosses = Number(sessionStorage.getItem('losses'));
-	var playerWins = Number(sessionStorage.getItem('wins'));
-	sessionStorage.setItem('player', '1')
-	playerName = 
-	playerData = {
-		1: {
-			losses: playerLosses,
-			name: playerName,
-			wins: playerWins
-		}
-	}
-	refPlayers.update(playerData);
-})
+
+
